@@ -1,2 +1,17 @@
 build
 .cache
+Debug/
+x64/
+.idea/
+Testing/
+CTestTestfile.cmake
+cmake_install.cmake
+**.dir/
+*.vcxproj
+*.vcxproj.filters
+CMakeFiles/
+CMakeCache.txt
+*.sln
+*.vcxproj.user
+*.user
+DartConfiguration.tcl

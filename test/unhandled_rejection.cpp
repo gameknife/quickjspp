@@ -42,7 +42,8 @@ int main()
             const p = new Promise((resolve, reject) => {
                 reject(123);
                 nextTick(() => {
-                    p.catch(() => {/* no-op */});
+                    //p.catch(() => {/* no-op */});
+                    p.then(() => {/* no-op */});
                 });
             });
         })();

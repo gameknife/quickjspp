@@ -405,11 +405,6 @@ struct js_traits<std::variant<Ts...>>
                 return std::is_integral_v<T> || std::is_floating_point_v<T>;
             case JS_TAG_BOOL:
                 return is_boolean<T>::value || std::is_integral_v<T> || std::is_floating_point_v<T>;
-
-            case JS_TAG_BIG_DECIMAL:
-                [[fallthrough]];
-            case JS_TAG_BIG_FLOAT:
-                [[fallthrough]];
             case JS_TAG_FLOAT64:
             default: // >JS_TAG_FLOAT64 (JS_NAN_BOXING)
                 return is_double<T>::value || std::is_floating_point_v<T>;
@@ -473,12 +468,6 @@ struct js_traits<std::variant<Ts...>>
                 [[fallthrough]];
             case JS_TAG_EXCEPTION:
                 break;
-
-            case JS_TAG_BIG_DECIMAL:
-                [[fallthrough]];
-            case JS_TAG_BIG_FLOAT:
-                [[fallthrough]];
-
             case JS_TAG_FLOAT64:
                 [[fallthrough]];
             default: // more than JS_TAG_FLOAT64 (nan boxing)
@@ -862,12 +851,12 @@ struct js_traits<std::shared_ptr<T>>
     static
     std::enable_if_t<!std::is_same_v<B, T> && !std::is_same_v<B, void>>
     ensureCanCastToBase() {
-        static_assert(std::is_base_of_v<B, T>, "Type is not a derived class");
-
-        if(js_traits<std::shared_ptr<T>>::QJSClassId == 0)
-            JS_NewClassID(&js_traits<std::shared_ptr<T>>::QJSClassId);
-
-        js_traits<std::shared_ptr<B>>::template registerDerivedClass<T>(QJSClassId, unwrap);
+        // static_assert(std::is_base_of_v<B, T>, "Type is not a derived class");
+        //
+        // if(js_traits<std::shared_ptr<T>>::QJSClassId == 0)
+        //     JS_NewClassID(&js_traits<std::shared_ptr<T>>::QJSClassId);
+        //
+        // js_traits<std::shared_ptr<B>>::template registerDerivedClass<T>(QJSClassId, unwrap);
     }
 
     template <auto M>
@@ -893,11 +882,11 @@ struct js_traits<std::shared_ptr<T>>
     static void register_class(JSContext * ctx, const char * name, JSValue proto = JS_NULL,
                                JSClassCall * call = nullptr, JSClassExoticMethods * exotic = nullptr)
     {
+        auto rt = JS_GetRuntime(ctx);
         if(QJSClassId == 0)
         {
-            JS_NewClassID(&QJSClassId);
+            JS_NewClassID(rt, &QJSClassId);
         }
-        auto rt = JS_GetRuntime(ctx);
         if(!JS_IsRegisteredClass(rt, QJSClassId))
         {
             JSClassGCMark * marker = nullptr;
@@ -1096,11 +1085,13 @@ struct js_traits<detail::function>
     // TODO: replace ctx with rt
     static void register_class(JSContext * ctx, const char * name)
     {
+        auto rt = JS_GetRuntime(ctx);
+        
         if(QJSClassId == 0)
         {
-            JS_NewClassID(&QJSClassId);
+            JS_NewClassID(rt, &QJSClassId);
         }
-        auto rt = JS_GetRuntime(ctx);
+        
         if(JS_IsRegisteredClass(rt, QJSClassId))
             return;
         JSClassDef def{
@@ -1469,7 +1460,7 @@ public:
         if(!rt)
             throw std::runtime_error{"qjs: Cannot create runtime"};
 
-        JS_SetHostUnhandledPromiseRejectionTracker(rt, promise_unhandled_rejection_tracker, NULL);
+        JS_SetHostPromiseRejectionTracker(rt, promise_unhandled_rejection_tracker, NULL);
         JS_SetModuleLoaderFunc(rt, nullptr, module_loader, nullptr);
     }
 
@@ -1852,7 +1843,7 @@ public:
     {
         assert(buffer.data()[buffer.size()] == '\0' &&
                "fromJSON buffer is not null-terminated"); // JS_ParseJSON requirement
-        return Value{ctx, JS_ParseJSON2(ctx, buffer.data(), buffer.size(), filename, flags)};
+        return Value{ctx, JS_ParseJSON(ctx, buffer.data(), buffer.size(), filename)};
     }
 
     /** Get qjs::Context from JSContext opaque pointer */
